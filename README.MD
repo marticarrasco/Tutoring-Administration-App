@@ -19,13 +19,13 @@ Ensure you have the following installed:
 
 ### **Dependencies**
 Install the necessary Python packages:
-\```bash
+\```
 pip install pandas openpyxl tkcalendar
 \```
 
 ### **Initialization**
 First things first, set up your database:
-\```bash
+\```
 python databaseInitializer.py
 \```
 
