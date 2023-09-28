@@ -19,21 +19,21 @@ Ensure you have the following installed:
 
 ### **Dependencies**
 Install the necessary Python packages:
-\```
+```
 pip install pandas openpyxl tkcalendar
-\```
+```
 
 ### **Initialization**
 First things first, set up your database:
-\```
+```
 python databaseInitializer.py
-\```
+```
 
 ### **Launch the App**
 Now, you're all set! Launch the app and get started:
-\```bash
+```
 python app.py
-\```
+```
 
 ## 📘 **How to Use**
 
