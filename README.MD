@@ -4,8 +4,6 @@ Easily manage your tutoring sessions with this intuitive, GUI-based application 
 
 ![Tutoring App Screenshot](Screenshot.png)
 
-*Note: Replace `path_to_your_screenshot.png` with the path to your actual screenshot. You can host the screenshot on GitHub in the same repo and link it directly.*
-
 ## ✨ **Features** 
 - 📚 **Student Management**: Add, edit, or delete student details with ease.
 - ⏳ **Session Mastery**: Log tutoring sessions manually and keep them organized.
