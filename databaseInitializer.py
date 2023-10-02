@@ -13,13 +13,14 @@ CREATE TABLE IF NOT EXISTS Students (
 );
 ''')
 
-# Create TutoringSessions table
+# Create TutoringSessions table with is_paid column
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS TutoringSessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id INTEGER NOT NULL,
     date_of_session DATE NOT NULL,
     hours_worked REAL NOT NULL,
+    is_paid INTEGER DEFAULT 0,
     FOREIGN KEY (student_id) REFERENCES Students(id)
 );
 ''')
@@ -27,4 +28,3 @@ CREATE TABLE IF NOT EXISTS TutoringSessions (
 # Commit the changes and close the connection
 conn.commit()
 conn.close()
-

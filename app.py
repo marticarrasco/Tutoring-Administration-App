@@ -34,9 +34,10 @@ def add_manual_session():
     cursor.execute("SELECT id FROM Students WHERE name = ?", (student_name,))
     student_id = cursor.fetchone()
     
+    
     if student_id:
         student_id = student_id[0]  # Extract the ID from the tuple
-        cursor.execute("INSERT INTO TutoringSessions (student_id, date_of_session, hours_worked) VALUES (?, ?, ?)", (student_id, session_date, hours))
+        cursor.execute("INSERT INTO TutoringSessions (student_id, date_of_session, hours_worked, is_paid) VALUES (?, ?, ?, 0)", (student_id, session_date, hours))
         conn.commit()
     else:
         messagebox.showerror("Error", "Student not found in the database.")
@@ -44,7 +45,7 @@ def add_manual_session():
     conn.close()
     
     earnings = compute_total_earned_by_student()
-    compute_total_earned_this_month()
+    display_monthly_earnings()
     compute_total_earned_this_year()
     refresh_sessions_list()
 
@@ -58,7 +59,7 @@ def refresh_sessions_list():
     
     # Fetch sessions with student names using JOIN operation
     query = """
-    SELECT Students.name, TutoringSessions.date_of_session, TutoringSessions.hours_worked
+    SELECT Students.name, TutoringSessions.date_of_session, TutoringSessions.hours_worked, TutoringSessions.is_paid
     FROM TutoringSessions
     JOIN Students ON TutoringSessions.student_id = Students.id
     ORDER BY TutoringSessions.date_of_session DESC
@@ -67,9 +68,11 @@ def refresh_sessions_list():
     cursor.execute(query)
     sessions = cursor.fetchall()
     for session in sessions:
-        student, session_date, hours = session
+        student, session_date, hours, is_paid = session
         formatted_date = datetime.strptime(session_date, '%Y-%m-%d').strftime('%d-%m-%Y')
-        sessions_tree.insert("", tk.END, values=(student, formatted_date, hours))
+        paid_status = "Yes" if is_paid else "No"
+        sessions_tree.insert("", tk.END, values=(student, formatted_date, hours, paid_status))
+
 
     conn.close()
 
@@ -103,7 +106,7 @@ def delete_session():
     conn.close()
 
     earnings = compute_total_earned_by_student()
-    compute_total_earned_this_month()
+    display_monthly_earnings()
     compute_total_earned_this_year()
     
     refresh_sessions_list()
@@ -141,7 +144,7 @@ def edit_session():
             conn.close()
             refresh_sessions_list()
             earnings = compute_total_earned_by_student()
-            compute_total_earned_this_month()
+            display_monthly_earnings()
             compute_total_earned_this_year()
         except ValueError:
             messagebox.showerror("Error", "Please enter a valid number for hours.")
@@ -323,13 +326,57 @@ btn_add_session.grid(row=3, column=0, columnspan=2, pady=10, sticky=tk.W)
 frame_sessions = ttk.LabelFrame(root, text="Sessions", padding=(10, 5))
 frame_sessions.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
 
-sessions_tree = ttk.Treeview(frame_sessions, columns=('Student', 'Date', 'Hours'), show='headings')
+# Update sessions_tree to include a new column for payment status
+sessions_tree = ttk.Treeview(frame_sessions, columns=('Student', 'Date', 'Hours', 'Paid'), show='headings')
 sessions_tree.heading('Student', text='Student')
 sessions_tree.heading('Date', text='Date')
 sessions_tree.heading('Hours', text='Hours')
+sessions_tree.heading('Paid', text='Paid')  # New heading for payment status
 sessions_tree.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
 
+
 refresh_sessions_list()
+
+def mark_as_paid():
+    selected_items = sessions_tree.selection()
+    if not selected_items:
+        return
+    student_name, session_date, _, _ = sessions_tree.item(selected_items[0])['values']
+    session_date_db_format = datetime.strptime(session_date, '%d-%m-%Y').strftime('%Y-%m-%d')  # Convert to database format
+    
+    conn = sqlite3.connect('tutoring_app.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE TutoringSessions SET is_paid=1 WHERE student_id = (SELECT id FROM Students WHERE name = ?) AND date_of_session = ?", (student_name, session_date_db_format))
+    conn.commit()
+    conn.close()
+    
+    refresh_sessions_list()
+
+def mark_as_unpaid():
+    # similar to mark_as_paid, but set is_paid=0
+    selected_items = sessions_tree.selection()
+    if not selected_items:
+        return
+    student_name, session_date, _, _ = sessions_tree.item(selected_items[0])['values']
+    session_date_db_format = datetime.strptime(session_date, '%d-%m-%Y').strftime('%Y-%m-%d')  # Convert to database format
+    
+    conn = sqlite3.connect('tutoring_app.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("UPDATE TutoringSessions SET is_paid=0 WHERE student_id = (SELECT id FROM Students WHERE name = ?) AND date_of_session = ?", (student_name, session_date_db_format))
+    conn.commit()
+    conn.close()
+    
+    refresh_sessions_list()
+
+# Add buttons for marking sessions as paid or unpaid
+btn_mark_paid = ttk.Button(frame_sessions, text="Mark as Paid", command=mark_as_paid)
+btn_mark_paid.pack(pady=5, side=tk.LEFT, padx=5)
+
+btn_mark_unpaid = ttk.Button(frame_sessions, text="Mark as Unpaid", command=mark_as_unpaid)
+btn_mark_unpaid.pack(pady=5, side=tk.LEFT, padx=5)
+
 
 btn_edit_session = ttk.Button(frame_sessions, text="Edit Session", command=edit_session)
 btn_edit_session.pack(pady=5, side=tk.LEFT, padx=5)
@@ -410,7 +457,7 @@ def compute_total_earned_by_student():
 earnings = compute_total_earned_by_student()
 
 
-def compute_total_earned_this_month():
+def display_monthly_earnings():
     conn = sqlite3.connect('tutoring_app.db')
     cursor = conn.cursor()
 
@@ -433,7 +480,34 @@ def compute_total_earned_this_month():
     
     conn.close()
 
-compute_total_earned_this_month()
+display_monthly_earnings()
+
+def compute_monthly_earnings():
+    conn = sqlite3.connect('tutoring_app.db')
+    cursor = conn.cursor()
+
+    # Compute earnings for each month where work was recorded
+    query = """
+    SELECT strftime('%m-%Y', date_of_session) as month_year, SUM(TutoringSessions.hours_worked * Students.price_per_hour)
+    FROM Students
+    JOIN TutoringSessions ON TutoringSessions.student_id = Students.id
+    GROUP BY month_year
+    ORDER BY datetime(date_of_session)
+    """
+
+    cursor.execute(query)
+    monthly_earnings = cursor.fetchall()
+    
+    conn.close()
+    print(monthly_earnings)
+    return monthly_earnings
+
+def display_monthly_earnings():
+    earnings = compute_monthly_earnings()
+    
+    # Assuming you have a label or some widget where you display statistics
+    for idx, (month_year, amount) in enumerate(earnings, start=len(earnings) + 3):  # Adjust the start index accordingly
+        ttk.Label(inner_stats_frame, text=f"{month_year}: ${amount:.2f}").grid(row=idx, column=0, padx=5, pady=5, sticky=tk.W)
 
 def compute_total_earned_this_year():
     conn = sqlite3.connect('tutoring_app.db')
@@ -487,7 +561,7 @@ def compute_highest_earning_month():
         pass
 
 compute_highest_earning_month()
-
+display_monthly_earnings()
 
 
 refresh_sessions_list()
