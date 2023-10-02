@@ -26,12 +26,13 @@ pip install pandas openpyxl tkcalendar
 
 ### **Initialization**
 First things first, set up your database:
+
 '''
 python databaseInitializer.py
 '''
-
 ### **Migration (if you're updating from a previous version)**
 To incorporate the new `is_paid` feature into your existing database, run:
+
 '''
 python migrationProgramme.py
 '''
