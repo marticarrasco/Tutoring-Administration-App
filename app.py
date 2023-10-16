@@ -534,19 +534,27 @@ def compute_monthly_earnings():
     return monthly_earnings
 
 def display_monthly_earnings():
-
     earnings = compute_monthly_earnings()
     
-    # Assuming you have a label or some widget where you display statistics
-    for idx, (month_year, amount) in enumerate(earnings, start=len(earnings) + 4):  # Adjust the start index accordingly
+    # Get the current row placement of the last displayed label
+    current_month_earnings = compute_total_earned_by_student()
+    start_idx = len(current_month_earnings) + 1  # index after the current month's total
+
+    # Add extra spacing (2 rows)
+    for i in range(2):
+        empty_label = ttk.Label(inner_stats_frame, text="")
+        empty_label.grid(row=start_idx + i, column=0, padx=5, pady=5, sticky=tk.W)
+
+    # Display monthly earnings, starting after the extra spacing
+    for idx, (month_year, amount) in enumerate(earnings, start=start_idx + 3):  # 2 for the spacing, 1 for next row
         ttk.Label(inner_stats_frame, text=f"{month_year}: {amount:.2f} €").grid(row=idx, column=0, padx=5, pady=5, sticky=tk.W)
 
-def compute_total_earned_this_year():   
+def compute_total_earned_this_year():
     conn = sqlite3.connect('tutoring_app.db')
     cursor = conn.cursor()
 
     current_year = datetime.now().year
-    
+
     # Compute total money earned for the year using JOIN operation
     query = """
     SELECT SUM(TutoringSessions.hours_worked * Students.price_per_hour)
@@ -561,8 +569,10 @@ def compute_total_earned_this_year():
     # Calculate the correct row index after monthly earnings are displayed
     monthly_earnings = compute_monthly_earnings()
     earnings = compute_total_earned_by_student()
+    row_placement = len(earnings) + len(monthly_earnings) + 5  # 2 for spacing, 1 for the current month's total, 2 more for extra spacing
+
     # Display total earnings for the year in stats_frame
-    ttk.Label(inner_stats_frame, text=f"Total for {current_year}: {total if total else 0:.2f} €").grid(row=len(earnings) + len(monthly_earnings) + 1, column=0, padx=5, pady=5, sticky=tk.W)
+    ttk.Label(inner_stats_frame, text=f"Total for {current_year}: {total if total else 0:.2f} €").grid(row=row_placement, column=0, padx=5, pady=5, sticky=tk.W)
     
     conn.close()
 
